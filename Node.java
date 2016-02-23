@@ -1,9 +1,15 @@
-
+/*
+ * Name: Daniel Moore
+ * Class: 4930.002 - Information Retrieval
+ * Date: 2/4/16
+ * Description: Node class to link words/terms to their term frequencies and overrides a compareTo method for sorting
+ * lowest to highest term frequencies.
+ */
 public class Node implements Comparable<Node>{
 	private String token;
-	private Integer tf;
+	private Double tf;
 	
-	public Node(String a, Integer b){
+	public Node(String a, Double b){
 		token = a;
 		tf = b;
 	}
@@ -12,10 +18,18 @@ public class Node implements Comparable<Node>{
 		return token;
 	}
 	
-	public Integer getTermFrequency(){
+	public Double getTermFrequency(){
 		return tf;
 	}
-
+	
+	public void incrementTf(){
+		tf++;
+	}
+	
+	public void setTF(Double b){
+		tf = b;
+	}
+	
 	@Override
 	public int compareTo(Node arg0) {
 		if(tf > arg0.getTermFrequency())

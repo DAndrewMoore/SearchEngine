@@ -1,0 +1,22 @@
+Each document title should be the key to an a Node array where each node is a 2-tuple term->term frequency
+* This will provide a relative term frequency but we still need to divide by the max{tf | Doc d}
+** {tf | t, D}/max{tf | doc D}
+*** Preprocess each document to fill node array, reparse terms and normalize their tf values
+* This will provide a vector space for each document based on the terms
+
+Create an inverse index
+*key = term
+*value = list of docs that contain key
+*calculate tf-idf and update docMap tf to tf-idf
+
+======== Doneskirinoooooo  ========
+
+======== Now the hard part ========
+
+We still need to parse the queries and respond with relevant documents.
+
+1. Parse query, remove stopwards and affixes
+2. Create tf vector of query
+3. Combine arrays with relevant terms set.add(term->doc list) the set will eliminate duplicates
+4. For each like term in query(Ai)->doc(Bi) do sum(Ai*Bi)/sqrt(sum(Ai^2)*sum(Bi^2))
+5. Store outcome as (out, doc) and rank descending by outcome
