@@ -32,9 +32,9 @@ public class Node implements Comparable<Node>{
 	
 	@Override
 	public int compareTo(Node arg0) {
-		if(tf > arg0.getTermFrequency())
+		if(this.tf < arg0.getTermFrequency())
 			return 1;
-		else if(tf == arg0.getTermFrequency())
+		else if(this.tf == arg0.getTermFrequency())
 			return 0;
 		else
 			return -1;

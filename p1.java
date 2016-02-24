@@ -51,8 +51,8 @@ class p1{
 					
 					for(String meh : tDoc){ //parse through the retrieved token(s)
 						if(meh.length() >= 1){
+							meh = stem.stripAffixes(meh); //this may need to be put inside the if statement
 							if(stopWords.indexOf(meh) == -1){
-								meh = stem.stripAffixes(meh); //this may need to be put inside the if statement
 								boolean maybe = false; //our array has no elements or we couldn't find the term
 								
 								for(int i=0; i<tList.size() && !maybe; i++) //parse through nodes to search for term
@@ -69,8 +69,10 @@ class p1{
 								}
 							}
 							numWords++; //increase the number of words parsed
+							System.out.print(meh+" ");
 						}
 					} //end token array parser
+					System.out.println();
 				} //end word parser for certain file
 				
 				//start tf calculations
@@ -206,22 +208,24 @@ class p1{
 			String[] tokens = tokenizer(query); //tokenize it
 			ArrayList<Node> tokenList = new ArrayList<Node>(); //token list of tokens
 			for(String token : tokens){ //for each token our tokenizer returned
-				if(stopWords.indexOf(token) == -1 && token.length() > 0){ //check if stopword
+				if(token.length() > 0){
 					token = stem.stripAffixes(token); //strip the affixes
-					boolean maybe = false; //if not found
-					for(int i=0; i<tokenList.size() && !maybe; i++){ //parse token list for already found tokens
-						if(tokenList.get(i).getToken().compareToIgnoreCase(token) == 0){ //we found it
-							Node superTempNode = tokenList.get(i); //get that token's node
-							superTempNode.incrementTf(); //increment it
-							tokenList.set(i, superTempNode); //set the updated node back in place
-							maybe=true; //we found it
-						} //end if we didn't find it
-					} //end for we didn't find it or we did, idk
-					if(!maybe){ //we didn't find it
-						Node superTempNode = new Node(token, 1.0); //make a new node
-						tokenList.add(superTempNode); //put it at the back
-					} //end we didn't find it but now its there
-				} //end stopword check
+					if(stopWords.indexOf(token) == -1){ //check if stopword
+						boolean maybe = false; //if not found
+						for(int i=0; i<tokenList.size() && !maybe; i++){ //parse token list for already found tokens
+							if(tokenList.get(i).getToken().compareToIgnoreCase(token) == 0){ //we found it
+								Node superTempNode = tokenList.get(i); //get that token's node
+								superTempNode.incrementTf(); //increment it
+								tokenList.set(i, superTempNode); //set the updated node back in place
+								maybe=true; //we found it
+							} //end if we didn't find it
+						} //end for we didn't find it or we did, idk
+						if(!maybe){ //we didn't find it
+							Node superTempNode = new Node(token, 1.0); //make a new node
+							tokenList.add(superTempNode); //put it at the back
+						} //end we didn't find it but now its there
+					} //end stopword check
+				} 
 			} //end token array
 			//update term frequencies for query
 			double theMax = getMax(tokenList); //get the max term frequency
@@ -245,31 +249,31 @@ class p1{
 			
 			/* Cosine similarity function */
 			Iterator<String> dI = docList.iterator();
-			HashMap<String, Double> outcomes = new HashMap<String, Double>();
+			List<Node> outcomes = new ArrayList<Node>();
 			double numerator = 0, ais = 0, bis = 0; //top summation, query token tf, document token tfidf
-			while(dI.hasNext()){
-				String document = dI.next();
-				ArrayList<Node> termVector = docMap.get(document);
-				for(Node tokenNode : tokenList){
-					String token = tokenNode.getToken();
-					boolean found = false;
-					for(int i=0; i<termVector.size() && !found; i++){
-						if(termVector.get(i).getToken().compareToIgnoreCase(token) == 0){
-							numerator += termVector.get(i).getTermFrequency()*tokenNode.getTermFrequency();
-							ais += Math.pow(tokenNode.getTermFrequency(),2);
-							bis += Math.pow(termVector.get(i).getTermFrequency(), 2);
-							found = true;
-						}
-					}
-				}
-				double denominator = Math.sqrt(ais*bis);
-				
+			while(dI.hasNext()){ //while we have documents that contain the terms
+				String document = dI.next(); //get the next document
+				ArrayList<Node> termVector = docMap.get(document); //get the termVector of the document
+				for(Node tokenNode : tokenList){ //for nodes in the query
+					String token = tokenNode.getToken(); //get the token of the node from the query
+					boolean found = false; //we haven't found it
+					for(int i=0; i<termVector.size() && !found; i++){ //search the document term vector
+						if(termVector.get(i).getToken().compareToIgnoreCase(token) == 0){ //compare the terms
+							numerator += termVector.get(i).getTermFrequency()*tokenNode.getTermFrequency(); //Ai*Bi
+							ais += Math.pow(tokenNode.getTermFrequency(),2); //Ai^2
+							bis += Math.pow(termVector.get(i).getTermFrequency(), 2); //Bi^2
+							found = true; //we found it
+						} //end if term has been seen in corpus
+					} //end parse of termVector search for tokens
+				} // end query while
+				double denominator = Math.sqrt(ais*bis); //compute the denominator
 				/* Store outcomes */
-				outcomes.put(document, numerator / denominator); //outcomes needs to be destroyed on new query read, find permenant storage
-			}
+				Node tNode = new Node(document, (numerator / denominator)); //create a node
+				outcomes.add(tNode); //outcomes needs to be destroyed on new query read, find permenant storage
+			} //end document that contain query terms list 
 			
-		
-		}
+			Collections.sort(outcomes);
+		} //end queries
 		queries.close();
 	}
 }
