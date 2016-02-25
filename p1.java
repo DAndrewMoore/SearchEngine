@@ -288,7 +288,34 @@ class p1{
 		
 		return relevanceList;
 	}
-
+	
+	private static void getPrecisionAndRecall(int queryNum, HashMap<Integer, ArrayList<String>> relevanceList,
+			List<Node> outcomes) {
+		Integer numD2Check[] = {10, 50, 100, 500};
+		double avgP = 0;
+		double avgR = 0;
+		for(int i : numD2Check){
+			ArrayList<String> relDocList = relevanceList.get(queryNum);
+			int B = relDocList.size(); //number of relevant documents in database
+			int A = 0; //number of relevant documents retrieved
+			for(String relDoc : relDocList){ //over all documents retrieved
+				for(int j=0; j<i; j++){ //get top 10
+					if(outcomes.get(j).getToken().substring(outcomes.get(j).getToken().length()-4).compareTo(relDoc)==0){ //if we've found the document
+						B--; A++; //decrement number not retrieved and increment relevant number retrieved
+					}
+				}
+			}
+			double precision = A / ((double) A + B);
+			avgP+=precision;
+			double recall = A / ((double) (i - A) + A);
+			avgR+=recall;
+			//System.out.println(queryNum+" has precision and recall for "+i+" retrieved documents "+precision+" "+recall);
+		}
+		avgP = (avgP / 4) * 100;
+		avgR = (avgR / 4) * 100;
+		System.out.println(queryNum+" has avg precision and recall "+avgP+" "+avgR);
+	}
+	
 	public static void main(String args[]) throws IOException{
 		/* Create directory object of files to be parsed */
 		File folder = new File("C:\\Users\\Andrew\\Desktop\\4930.002\\cranfieldDocs"); //directed to document directory
@@ -326,23 +353,7 @@ class p1{
 			List<Node> outcomes = findSimilarity(tokenList, docList, docMap);
 			
 			/* Get precision and recall based on relevancies for 10, 50, 100, 500 top returned pages */
-			Integer numD2Check[] = {10, 50, 100, 500};
-			for(int i : numD2Check){
-				ArrayList<String> relDocList = relevanceList.get(queryNum);
-				int B = relDocList.size(); //number of relevant documents in database
-				int A = 0; //number of relevant documents retrieved
-				for(String relDoc : relDocList){ //over all documents retrieved
-					for(int j=0; j<i; j++){ //get top 10
-						if(outcomes.get(j).getToken().substring(outcomes.get(j).getToken().length()-4).compareTo(relDoc)==0){ //if we've found the document
-							B--; A++; //decrement number not retrieved and increment relevant number retrieved
-						}
-					}
-				}
-				double precision = A / ((double) A + B);
-				double recall = A / ((double) i + A);
-				System.out.println(queryNum+" has precision and recall for "+i+" retrieved documents "+precision+" "+recall);
-			}
-			System.out.println();
+			getPrecisionAndRecall(queryNum, relevanceList, outcomes);
 		} //end queries
 		queries.close();
 	}
