@@ -188,17 +188,87 @@ class p1{
 			}
 		}
 	}
+	
+	public static ArrayList<Node> tokenQuery(String query, ArrayList<String> stopWords){
+		Porter stem = new Porter(); //Porter stemmer instantiation
+		String[] tokens = tokenizer(query); //tokenize it
+		ArrayList<Node> tokenList = new ArrayList<Node>(); //token list of tokens
+		for(String token : tokens){ //for each token our tokenizer returned
+			if(token.length() > 0){
+				token = stem.stripAffixes(token); //strip the affixes
+				if(stopWords.indexOf(token) == -1){ //check if stopword
+					boolean maybe = false; //if not found
+					for(int i=0; i<tokenList.size() && !maybe; i++){ //parse token list for already found tokens
+						if(tokenList.get(i).getToken().compareToIgnoreCase(token) == 0){ //we found it
+							Node superTempNode = tokenList.get(i); //get that token's node
+							superTempNode.incrementTf(); //increment it
+							tokenList.set(i, superTempNode); //set the updated node back in place
+							maybe=true; //we found it
+						} //end if we didn't find it
+					} //end for we didn't find it or we did, idk
+					if(!maybe){ //we didn't find it
+						Node superTempNode = new Node(token, 1.0); //make a new node
+						tokenList.add(superTempNode); //put it at the back
+					} //end we didn't find it but now its there
+				} //end stopword check
+			} 
+		} //end token array
+		//update term frequencies for query
+		double theMax = getMax(tokenList); //get the max term frequency
+		for(int i=0; i<tokenList.size(); i++){ //parse through token list
+			Node tNode = tokenList.get(i); //get each node 
+			tNode.setTF(tNode.getTermFrequency() / theMax); //update tf
+			tokenList.set(i, tNode); //set the updated node to the place where the old node was
+		} //end token list parse
+		//tokenList contains the list of tokens from the query
+		
+		return tokenList;
+	}
 
-	public static void main(String args[]) throws IOException{
-		File folder = new File("C:\\Users\\Andrew\\Desktop\\4930.002\\cranfieldDocs"); //directed to document directory
-		ArrayList<String> stopWords = loadStopWords();
-		/* Create document mapping to term frequencies */
-		HashMap<String, ArrayList<Node>> docMap = parseFiles(folder, stopWords); //map of documents to list of nodes with corresponding frequencies altered by max tf in doc d_i
-		/* Create inverse index from docMap */
-		HashMap<String, HashSet<String>> invIndex = createInvIndex(docMap);
-		/* Update docMap tf to tf-idf */
-		docMap = updateTF(docMap, invIndex);
-		/* Read Relevance List */
+	private static HashSet<String> matchDocs(ArrayList<Node> tokenList, HashMap<String, HashSet<String>> invIndex) {
+		HashSet<String> docList = new HashSet<String>(); //document list of all documents containing query tokens
+		for(int i=0; i<tokenList.size(); i++){ //parse through query
+			Node tNode = tokenList.get(i); //get each token node
+			if(invIndex.containsKey(tNode.getToken())){ //look before we leap (null pointer exceptions are pain)
+				HashSet<String> termDocList = invIndex.get(tNode.getToken()); //get the hashset of documents on that token
+				docList.addAll(termDocList); //union the sets
+			} //end key check
+		} //end query parse
+		//docList contains the documents that contain terms from the tokenList
+		return docList;
+	}
+	
+	private static List<Node> findSimilarity(ArrayList<Node> tokenList, HashSet<String> docList, HashMap<String, ArrayList<Node>> docMap) {
+		Iterator<String> dI = docList.iterator();
+		List<Node> outcomes = new ArrayList<Node>();
+		double numerator = 0, ais = 0, bis = 0; //top summation, query token tf, document token tfidf
+		while(dI.hasNext()){ //while we have documents that contain the terms
+			String document = dI.next(); //get the next document
+			ArrayList<Node> termVector = docMap.get(document); //get the termVector of the document
+			for(Node tokenNode : tokenList){ //for nodes in the query
+				String token = tokenNode.getToken(); //get the token of the node from the query
+				boolean found = false; //we haven't found it
+				for(int i=0; i<termVector.size() && !found; i++){ //search the document term vector
+					if(termVector.get(i).getToken().compareToIgnoreCase(token) == 0){ //compare the terms
+						numerator += termVector.get(i).getTermFrequency()*tokenNode.getTermFrequency(); //Ai*Bi
+						ais += Math.pow(tokenNode.getTermFrequency(),2); //Ai^2
+						bis += Math.pow(termVector.get(i).getTermFrequency(), 2); //Bi^2
+						found = true; //we found it
+					} //end if term has been seen in corpus
+				} //end parse of termVector search for tokens
+			} // end query while
+			double denominator = Math.sqrt(ais*bis); //compute the denominator
+			/* Store outcomes */
+			Node tNode = new Node(document, (numerator / denominator)); //create a node
+			outcomes.add(tNode); //outcomes needs to be destroyed on new query read, find permenant storage
+		} //end document that contain query terms list 
+		
+		Collections.sort(outcomes);
+		
+		return outcomes;
+	}
+
+	private static HashMap<Integer, ArrayList<String>> readRelevancies() throws FileNotFoundException {
 		Scanner relevance = new Scanner(new File("C:\\Users\\Andrew\\Desktop\\4930.002\\relevance.txt"));
 		HashMap<Integer, ArrayList<String>> relevanceList = new HashMap<Integer, ArrayList<String>>();
 		while(relevance.hasNextLine()){
@@ -210,87 +280,44 @@ class p1{
 			relevanceList.put(qNum, tList);
 		}
 		relevance.close();
+		return relevanceList;
+	}
+
+	public static void main(String args[]) throws IOException{
+		File folder = new File("C:\\Users\\Andrew\\Desktop\\4930.002\\cranfieldDocs"); //directed to document directory
+		ArrayList<String> stopWords = loadStopWords();
+		/* Create document mapping to term frequencies */
+		HashMap<String, ArrayList<Node>> docMap = parseFiles(folder, stopWords); //map of documents to list of nodes with corresponding frequencies altered by max tf in doc d_i
+		/* Create inverse index from docMap */
+		HashMap<String, HashSet<String>> invIndex = createInvIndex(docMap);
+		/* Update docMap tf to tf-idf */
+		docMap = updateTF(docMap, invIndex);
+		/* Read Relevance List */
+		HashMap<Integer, ArrayList<String>> relevanceList = readRelevancies();
 		
-		/* Read query */
+		/* Read query and rank relevancies */
 		Scanner queries = new Scanner(new File("C:\\Users\\Andrew\\Desktop\\4930.002\\queries.txt"));
 		int queryNum = 0;
 		while(queries.hasNextLine()){
 			queryNum++;
 			/* Create tf vector of query */
-			Porter stem = new Porter(); //Porter stemmer instantiation
 			String query = queries.nextLine(); //get the query
-			String[] tokens = tokenizer(query); //tokenize it
-			ArrayList<Node> tokenList = new ArrayList<Node>(); //token list of tokens
-			for(String token : tokens){ //for each token our tokenizer returned
-				if(token.length() > 0){
-					token = stem.stripAffixes(token); //strip the affixes
-					if(stopWords.indexOf(token) == -1){ //check if stopword
-						boolean maybe = false; //if not found
-						for(int i=0; i<tokenList.size() && !maybe; i++){ //parse token list for already found tokens
-							if(tokenList.get(i).getToken().compareToIgnoreCase(token) == 0){ //we found it
-								Node superTempNode = tokenList.get(i); //get that token's node
-								superTempNode.incrementTf(); //increment it
-								tokenList.set(i, superTempNode); //set the updated node back in place
-								maybe=true; //we found it
-							} //end if we didn't find it
-						} //end for we didn't find it or we did, idk
-						if(!maybe){ //we didn't find it
-							Node superTempNode = new Node(token, 1.0); //make a new node
-							tokenList.add(superTempNode); //put it at the back
-						} //end we didn't find it but now its there
-					} //end stopword check
-				} 
-			} //end token array
-			//update term frequencies for query
-			double theMax = getMax(tokenList); //get the max term frequency
-			for(int i=0; i<tokenList.size(); i++){ //parse through token list
-				Node tNode = tokenList.get(i); //get each node 
-				tNode.setTF(tNode.getTermFrequency() / theMax); //update tf
-				tokenList.set(i, tNode); //set the updated node to the place where the old node was
-			} //end token list parse
-			//tokenList contains the list of tokens from the query
+			
+			/* Tokenize the query */
+			ArrayList<Node> tokenList = tokenQuery(query, stopWords);
 			
 			/* Combine docs from terms matching in invIndex */
-			HashSet<String> docList = new HashSet<String>(); //document list of all documents containing query tokens
-			for(int i=0; i<tokenList.size(); i++){ //parse through query
-				Node tNode = tokenList.get(i); //get each token node
-				if(invIndex.containsKey(tNode.getToken())){ //look before we leap (null pointer exceptions are pain)
-					HashSet<String> termDocList = invIndex.get(tNode.getToken()); //get the hashset of documents on that token
-					docList.addAll(termDocList); //union the sets
-				} //end key check
-			} //end query parse
-			//docList contains the documents that contain terms from the tokenList
+			HashSet<String> docList = matchDocs(tokenList, invIndex);
 			
 			/* Cosine similarity function */
-			Iterator<String> dI = docList.iterator();
-			List<Node> outcomes = new ArrayList<Node>();
-			double numerator = 0, ais = 0, bis = 0; //top summation, query token tf, document token tfidf
-			while(dI.hasNext()){ //while we have documents that contain the terms
-				String document = dI.next(); //get the next document
-				ArrayList<Node> termVector = docMap.get(document); //get the termVector of the document
-				for(Node tokenNode : tokenList){ //for nodes in the query
-					String token = tokenNode.getToken(); //get the token of the node from the query
-					boolean found = false; //we haven't found it
-					for(int i=0; i<termVector.size() && !found; i++){ //search the document term vector
-						if(termVector.get(i).getToken().compareToIgnoreCase(token) == 0){ //compare the terms
-							numerator += termVector.get(i).getTermFrequency()*tokenNode.getTermFrequency(); //Ai*Bi
-							ais += Math.pow(tokenNode.getTermFrequency(),2); //Ai^2
-							bis += Math.pow(termVector.get(i).getTermFrequency(), 2); //Bi^2
-							found = true; //we found it
-						} //end if term has been seen in corpus
-					} //end parse of termVector search for tokens
-				} // end query while
-				double denominator = Math.sqrt(ais*bis); //compute the denominator
-				/* Store outcomes */
-				Node tNode = new Node(document, (numerator / denominator)); //create a node
-				outcomes.add(tNode); //outcomes needs to be destroyed on new query read, find permenant storage
-			} //end document that contain query terms list 
+			List<Node> outcomes = findSimilarity(tokenList, docList, docMap);
 			
-			Collections.sort(outcomes);
-			
+			/* Get list of predefined relevant documents */
 			ArrayList<String> relevancies = relevanceList.get(queryNum);
 			
 		} //end queries
 		queries.close();
 	}
+
+	
 }
