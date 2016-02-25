@@ -15,8 +15,8 @@ class p1{
 	
 	public static String[] tokenizer(String doc){
 		doc = doc.replaceAll("\'","");
-		doc = doc.replaceAll("\\p{Punct}", " ");
 		doc = doc.replaceAll("<[^>]*", "");
+		doc = doc.replaceAll("\\p{Punct}", " ");
 		String[] tDoc = doc.split("[\\s+\\n+]");
 		return tDoc;
 	}
@@ -35,7 +35,6 @@ class p1{
 	
 	public static HashMap<String, ArrayList<Node>> parseFiles(File folder, ArrayList<String> stopWords) throws FileNotFoundException{
 		File[] listOfFiles = folder.listFiles(); //get the files in the directory
-		HashMap<String, Integer> dictionary = new HashMap<String, Integer>(); //othe dictionary hashmap
 		HashMap<String, ArrayList<Node>> docMap = new HashMap<String, ArrayList<Node>>();
 		Porter stem = new Porter();
 		
@@ -69,10 +68,10 @@ class p1{
 								}
 							}
 							numWords++; //increase the number of words parsed
-							System.out.print(meh+" ");
+							//System.out.print(meh+" ");
 						}
 					} //end token array parser
-					System.out.println();
+					//System.out.println();
 				} //end word parser for certain file
 				
 				//start tf calculations
@@ -199,9 +198,24 @@ class p1{
 		HashMap<String, HashSet<String>> invIndex = createInvIndex(docMap);
 		/* Update docMap tf to tf-idf */
 		docMap = updateTF(docMap, invIndex);
+		/* Read Relevance List */
+		Scanner relevance = new Scanner(new File("C:\\Users\\Andrew\\Desktop\\4930.002\\relevance.txt"));
+		HashMap<Integer, ArrayList<String>> relevanceList = new HashMap<Integer, ArrayList<String>>();
+		while(relevance.hasNextLine()){
+			int qNum = relevance.nextInt();
+			ArrayList<String> tList = new ArrayList<String>();
+			if(relevanceList.containsKey(qNum))
+				tList = relevanceList.get(qNum);
+			tList.add(relevance.next());
+			relevanceList.put(qNum, tList);
+		}
+		relevance.close();
+		
 		/* Read query */
 		Scanner queries = new Scanner(new File("C:\\Users\\Andrew\\Desktop\\4930.002\\queries.txt"));
+		int queryNum = 0;
 		while(queries.hasNextLine()){
+			queryNum++;
 			/* Create tf vector of query */
 			Porter stem = new Porter(); //Porter stemmer instantiation
 			String query = queries.nextLine(); //get the query
@@ -273,6 +287,9 @@ class p1{
 			} //end document that contain query terms list 
 			
 			Collections.sort(outcomes);
+			
+			ArrayList<String> relevancies = relevanceList.get(queryNum);
+			
 		} //end queries
 		queries.close();
 	}
