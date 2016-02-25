@@ -50,7 +50,7 @@ class p1{
 					
 					for(String meh : tDoc){ //parse through the retrieved token(s)
 						if(meh.length() >= 1){
-							meh = stem.stripAffixes(meh); //this may need to be put inside the if statement
+							meh = stem.stripAffixes(meh);
 							if(stopWords.indexOf(meh) == -1){
 								boolean maybe = false; //our array has no elements or we couldn't find the term
 								
@@ -107,6 +107,7 @@ class p1{
 		return invIndex;
 	}
 	
+	/* Checkout out in case this is mucking up something */
 	private static HashMap<String, ArrayList<Node>> updateTF(HashMap<String, ArrayList<Node>> docMap, HashMap<String, HashSet<String>> invIndex) {
 		int corpusSize = docMap.size(); //N
 		
@@ -263,35 +264,47 @@ class p1{
 			outcomes.add(tNode); //outcomes needs to be destroyed on new query read, find permenant storage
 		} //end document that contain query terms list 
 		
-		Collections.sort(outcomes);
+		Collections.sort(outcomes); //sort our outcomes by similarity
 		
 		return outcomes;
 	}
 
 	private static HashMap<Integer, ArrayList<String>> readRelevancies() throws FileNotFoundException {
+		/* Document structure "query# relevantDocID" */
 		Scanner relevance = new Scanner(new File("C:\\Users\\Andrew\\Desktop\\4930.002\\relevance.txt"));
+		/* Keys will be query# which will point to list of docIDs */
 		HashMap<Integer, ArrayList<String>> relevanceList = new HashMap<Integer, ArrayList<String>>();
+		
+		//read entire file
 		while(relevance.hasNextLine()){
-			int qNum = relevance.nextInt();
-			ArrayList<String> tList = new ArrayList<String>();
-			if(relevanceList.containsKey(qNum))
-				tList = relevanceList.get(qNum);
-			tList.add(relevance.next());
-			relevanceList.put(qNum, tList);
+			int qNum = relevance.nextInt(); //get which query we're on
+			ArrayList<String> tList = new ArrayList<String>(); //create a new list if number has not been seen before
+			if(relevanceList.containsKey(qNum)) //if it has been seen
+				tList = relevanceList.get(qNum); //get it's docID list
+			tList.add(relevance.next()); //add to the back regardless
+			relevanceList.put(qNum, tList); //put in the new array
 		}
 		relevance.close();
+		
 		return relevanceList;
 	}
 
 	public static void main(String args[]) throws IOException{
+		/* Create directory object of files to be parsed */
 		File folder = new File("C:\\Users\\Andrew\\Desktop\\4930.002\\cranfieldDocs"); //directed to document directory
+		
+		/* Load the stop words document into a searchable structure */
 		ArrayList<String> stopWords = loadStopWords();
+		
 		/* Create document mapping to term frequencies */
 		HashMap<String, ArrayList<Node>> docMap = parseFiles(folder, stopWords); //map of documents to list of nodes with corresponding frequencies altered by max tf in doc d_i
+		
 		/* Create inverse index from docMap */
 		HashMap<String, HashSet<String>> invIndex = createInvIndex(docMap);
+		
 		/* Update docMap tf to tf-idf */
 		docMap = updateTF(docMap, invIndex);
+		
 		/* Read Relevance List */
 		HashMap<Integer, ArrayList<String>> relevanceList = readRelevancies();
 		
@@ -312,12 +325,26 @@ class p1{
 			/* Cosine similarity function */
 			List<Node> outcomes = findSimilarity(tokenList, docList, docMap);
 			
-			/* Get list of predefined relevant documents */
-			ArrayList<String> relevancies = relevanceList.get(queryNum);
-			
+			/* Get precision and recall based on relevancies for 10, 50, 100, 500 top returned pages */
+			Integer numD2Check[] = {10, 50, 100, 500};
+			for(int i : numD2Check){
+				ArrayList<String> relDocList = relevanceList.get(queryNum);
+				int B = relDocList.size(); //number of relevant documents in database
+				int A = 0; //number of relevant documents retrieved
+				for(String relDoc : relDocList){ //over all documents retrieved
+					for(int j=0; j<i; j++){ //get top 10
+						if(outcomes.get(j).getToken().substring(outcomes.get(j).getToken().length()-4).compareTo(relDoc)==0){ //if we've found the document
+							B--; A++; //decrement number not retrieved and increment relevant number retrieved
+						}
+					}
+				}
+				double precision = A / ((double) A + B);
+				double recall = A / ((double) i + A);
+				System.out.println(queryNum+" has precision and recall for "+i+" retrieved documents "+precision+" "+recall);
+			}
+			System.out.println();
 		} //end queries
 		queries.close();
 	}
 
-	
 }
