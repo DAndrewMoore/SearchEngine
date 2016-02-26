@@ -334,7 +334,7 @@ class p1{
 		/* Read Relevance List */
 		HashMap<Integer, ArrayList<String>> relevanceList = readRelevancies();
 		
-		/* Read query and rank relevancies */
+		/* Read query to rank documents and compare relevancies */
 		Scanner queries = new Scanner(new File("C:\\Users\\Andrew\\Desktop\\4930.002\\queries.txt"));
 		int queryNum = 0;
 		while(queries.hasNextLine()){
