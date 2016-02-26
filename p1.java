@@ -113,9 +113,9 @@ class p1{
 		
 		Set<String> s = docMap.keySet();
 		Iterator<String> i = s.iterator();
-		while(i.hasNext()){
-			String fileName = i.next();
-			ArrayList<Node> tList = docMap.get(fileName); //get term list
+		while(i.hasNext()){ //for each document
+			String fileName = i.next(); //get file name
+			ArrayList<Node> tList = docMap.get(fileName); //get term vector
 			for(int j=0; j<tList.size(); j++){ //parse list
 				Node tNode = tList.get(j); //specific term 'j'
 				double docsThatMentionTerm = invIndex.get(tNode.getToken()).size(); //get size of list of docs that have term j in them
@@ -289,8 +289,7 @@ class p1{
 		return relevanceList;
 	}
 	
-	private static void getPrecisionAndRecall(int queryNum, HashMap<Integer, ArrayList<String>> relevanceList,
-			List<Node> outcomes) {
+	private static void getPrecisionAndRecall(int queryNum, HashMap<Integer, ArrayList<String>> relevanceList, List<Node> outcomes) {
 		Integer numD2Check[] = {10, 50, 100, 500};
 		double avgP = 0;
 		double avgR = 0;
@@ -305,15 +304,15 @@ class p1{
 					}
 				}
 			}
-			double precision = A / ((double) A + B);
+			double precision = A / ((double) A + B); //relevant retrieved / (relevant retrieved + relevant not retrieved)
 			avgP+=precision;
-			double recall = A / ((double) (i - A) + A);
+			double recall = A / ((double) (i - A) + A); //relevant retrieved / ( (total - relevant) + relevant)
 			avgR+=recall;
-			//System.out.println(queryNum+" has precision and recall for "+i+" retrieved documents "+precision+" "+recall);
 		}
 		avgP = (avgP / 4) * 100;
 		avgR = (avgR / 4) * 100;
-		System.out.println(queryNum+" has avg precision and recall "+avgP+" "+avgR);
+		//System.out.println(queryNum+" has avg precision and recall "+avgP+" "+avgR);
+		System.out.printf("query %02d has average precision %02.4f and recall %02.4f\n", queryNum, avgP, avgR);
 	}
 	
 	public static void main(String args[]) throws IOException{
